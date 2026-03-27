@@ -1,2 +1,3 @@
 # spring
 这是一个实现了ai分析的spring学习仓库
+通过设置webhook，往后端发送push请求的变化，后端使用go语言，gin框架进行编写，实现推送企业微信应用
