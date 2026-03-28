@@ -35,6 +35,12 @@
             <artifactId>spring-context</artifactId>
             <version>5.3.8</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.8.1</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <!-- 编译配置（适配Java 8） -->
