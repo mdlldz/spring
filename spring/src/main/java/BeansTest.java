@@ -5,6 +5,31 @@ import java.io.File;
 
 class BeanTest {
     @Test
+    public void getBeanByType(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        Monster bean = (Monster) ioc.getBean(Monster.class);
+        System.out.println("bean=" + bean);
+    }
+    @Test
+    public void setBeanByRef(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        MemberServiceImpl memberService = ioc.getBean("memberService", MemberServiceImpl.class);
+        memberService.add();
+    }
+    @Test
+    public void getBeanByp(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        Monster monster04 = ioc.getBean("monster04",Monster.class);
+        System.out.println("monster04="  + monster04);
+    }
+@Test
+public void setBeanByConstructor() {
+    ApplicationContext ioc = new ApplicationContext("beans.xml");
+    Monster monster03 = ioc.getBean("monster03", Monster.class);
+    System.out.println("构造器被使用");
+    System.out.println("Monster03 = " + monster03);
+}
+    @Test
     public void getMonster() {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("beans.xml");
         Object monster01 = context.getBean("monster01");

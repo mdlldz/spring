@@ -1,17 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean class="Monster" id="monster03">
+        <constructor-arg value="200" index="0"/>
+        <constructor-arg value="mdl" index="1"/>
+        <constructor-arg value="ldz" index="2"/>
+    </bean>
+
+    <bean class="Monster" >
+        <property name="monsterId" value="100"/>
+        <property name="name" value="mdl"/>
+        <property name="skill" value="ldz"/>
+    </bean>
 
     <bean class="Monster" id="monster01">
         <property name="monsterId" value="100"/>
         <property name="name" value="mdl"/>
         <property name="skill" value="ldz"/>
     </bean>
+
     <bean class="Monster" id="monster02">
         <property name="monsterId" value="100"/>
         <property name="name" value="ldz"/>
         <property name="skill" value="mdl"/>
+    </bean>
+
+    <bean id="monster04" class="Monster"
+          p:monsterId="300"
+          p:name="p-name"
+          p:skill="p-skill"/>
+    <bean class="MemberDAOImpl" id="memberDAO"/>
+    <bean class="MemberServiceImpl" id="memberService">
+        <property name="memberDAO" ref="memberDAO"/>
     </bean>
 </beans>
