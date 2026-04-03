@@ -2,9 +2,78 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:p="http://www.springframework.org/schema/p"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans
-        http://www.springframework.org/schema/beans/spring-beans.xsd">
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util.xsd">
+    <util:list id="myBookList">
+        <value>三国演义</value>
+        <value>西游记</value>
+        <value>红楼梦</value>
+        <value>水浒传</value>
+    </util:list>
+    <bean class="BookStore" id="bookStore">
+    <property name="bookList" ref="myBookList">
+    </property>
+   </bean>
+    <bean class="Master" id="master">
+        <property name="name" value="太上老君" />
+        <property name = "monsterList">
+            <list>
+                <ref bean="monster01"/>
+                <ref bean="monster02"/>
+                <bean class="Monster" >
+                    <property name="name" value="老鼠精"/>
+                    <property name="monsterId" value="100"/>
+                    <property name="skill" value="吃粮食"/>
+                </bean>
+            </list>
+        </property>
+        <property name="monsterMap">
+            <map >
+                <entry >
+                    <key>
+                        <value>monster03</value>
+                    </key>
+                    <ref bean="monster03"/>
+                </entry>
+                <entry >
+                    <key>
+                        <value>monster04</value>
+                    </key>
+                    <ref bean="monster04"/>
+                </entry>
+            </map>
+        </property>
+            <property name="monsterSet">
+                <set >
+                    <ref bean="monster05"/>
+                    <ref bean="monster06"/>
+                    <bean class="Monster">
+                        <property name="name" value="金角大王"/>
+                        <property name="skill" value="吐水"/>
+                        <property name="monsterId" value="666"/>
 
+                    </bean>
+                </set>
+            </property>
+        <property name="monsterName">
+            <array>
+                <value>小妖怪</value>
+                <value>妖怪</value>
+                <value>老妖怪</value>
+            </array>
+        </property>
+        <property name="pros">
+             <props>
+                 <prop key="username">root</prop>
+                 <prop key="password">123456</prop>
+                 <prop key="ip">127.0.0.1</prop>
+             </props>
+        </property>
+    </bean>
     <bean class="Monster" id="monster03">
         <constructor-arg value="200" index="0"/>
         <constructor-arg value="mdl" index="1"/>
@@ -36,5 +105,10 @@
     <bean class="MemberDAOImpl" id="memberDAO"/>
     <bean class="MemberServiceImpl" id="memberService">
         <property name="memberDAO" ref="memberDAO"/>
+    </bean>
+    <bean class="MemberServiceImpl" id="memberService2">
+        <property name="memberDAO">
+            <bean class="MemberDAOImpl"/>
+        </property>
     </bean>
 </beans>

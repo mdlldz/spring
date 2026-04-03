@@ -5,10 +5,23 @@ import java.io.File;
 
 class BeanTest {
     @Test
+    public void setBeanByUtilList(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        BookStore bookStore = ioc.getBean("bookStore", BookStore.class);
+        System.out.println("bookStore=" + bookStore) ;
+    }
+    @Test
+    public void setBeanByCollection(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        Master master = ioc.getBean("master", Master.class);
+        System.out.println("master=" + master);
+    }
+
+    @Test
     public void getBeanByType(){
         ApplicationContext ioc = new ApplicationContext("beans.xml");
-        Monster bean = (Monster) ioc.getBean(Monster.class);
-        System.out.println("bean=" + bean);
+        MemberServiceImpl memberService = ioc.getBean("memberService2", MemberServiceImpl.class);
+        memberService.add();
     }
     @Test
     public void setBeanByRef(){

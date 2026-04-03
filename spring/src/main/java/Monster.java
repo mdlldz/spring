@@ -1,4 +1,4 @@
-public class Monster{
+public class Monster {
     private Integer monsterId;
     private String name;
     private String skill;
@@ -8,7 +8,8 @@ public class Monster{
         this.name = name;
         this.skill = skill;
     }
-    public Monster(){
+
+    public Monster() {
 
     }
 
@@ -36,4 +37,12 @@ public class Monster{
         this.skill = skill;
     }
 
+    @Override
+    public String toString() {
+        return "Monster{" +
+                "monsterId=" + monsterId +
+                ", name='" + name + '\'' +
+                ", skill='" + skill + '\'' +
+                '}';
+    }
 }
