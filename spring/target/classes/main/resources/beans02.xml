@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+    <bean class="House" id="house" destroy-method="destroy" 
+          init-method="init">
+        <property name="name" value="大豪宅"/>
+    </bean>
+    <bean class="House" id="house02" destroy-method="destroy"
+          init-method="init">
+        <property name="name" value="大别野"/>
+    </bean>
+<!--    在配置文件里配置MybeanPostProcessor后就会作用在该容器的对象，针对所有对象  -->
+    <bean class="MyBeanPostProcessor" id="myBeanPostProcessor">
+    </bean>
+
+</beans>

@@ -1,9 +1,35 @@
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.File;
 
 class BeanTest {
+    //属性文件给bean属性赋值
+    @Test
+    public void testProperties(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        Monster monster1000 = ioc.getBean("monster1000", Monster.class);
+        System.out.println("monster1000=" + monster1000);
+    }    //测试后置处理器
+    @Test
+    public void testBeanPostProcessor(){
+        ApplicationContext ioc = new ApplicationContext("beans02.xml");
+        House house = ioc.getBean("house", House.class);
+        System.out.println("使用house=" + house);
+    }
+    //测验bean的生命周期
+    @Test
+    public void testBeanLife(){
+        ApplicationContext ioc = new ApplicationContext("beans.xml");
+        Object bean = ioc.getBean("house",House.class);
+        System.out.println("bean =" + bean);
+        //1. ioc的编译类型 ApplicationContext ，运行类型 ClassPathXmlApplicationContext
+    //2. 因为ClassPathXmlApplicationContext 实现了 ConfigurableApplicationContext
+    //3. ClassPathXmlApplicationContext 是有close
+    //4. 将ioc 转成ClassPathXmlApplicationContext,再调用close
+        ioc.close();
+    }
     //测试Scope
     @Test
     public void testBeanScope(){
