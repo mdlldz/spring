@@ -1,280 +1,321 @@
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
-
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * 简易IOC容器实现
- * 支持XML解析、属性注入、占位符解析、初始化与销毁方法
- */
 public class ApplicationContext {
 
-    /**
-     * 单例Bean容器，存储Bean名称与实例的映射关系
-     */
     private final Map<String, Object> singletonObjects = new HashMap<>();
-
-    /**
-     * 销毁方法钩子集合，容器关闭时执行所有Bean的销毁方法
-     */
     private final List<Runnable> destroyHooks = new ArrayList<>();
-
-    /**
-     * 配置属性集合，存储从properties文件加载的配置项
-     */
     private final Properties properties = new Properties();
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([^}]+)}");
+    private static final Pattern SPEL = Pattern.compile("#\\{([^}]+)}");
 
-    /**
-     * 正则表达式，匹配${key}格式的占位符
-     */
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
-
-    /**
-     * 构造方法，初始化IOC容器
-     * @param xmlFile 配置文件路径
-     */
     public ApplicationContext(String xmlFile) {
         try {
-            // 读取XML配置文件
             SAXReader reader = new SAXReader();
             InputStream is = getClass().getClassLoader().getResourceAsStream(xmlFile);
-            if (is == null) {
-                throw new RuntimeException("XML文件不存在: " + xmlFile);
-            }
+            if (is == null) throw new RuntimeException("XML 文件不存在");
             Document doc = reader.read(is);
             Element root = doc.getRootElement();
 
-            // 加载外部配置文件
             loadPropertyPlaceholders(root);
 
-            // 实例化所有Bean
-            for (Element beanEl : root.elements("bean")) {
-                createBean(beanEl);
-            }
+            // 扫描注解包
+            scanComponentPackages(root);
 
-            // 注册JVM关闭钩子，容器关闭时执行销毁方法
+            List<Element> beanElements = root.elements("bean");
+            for (Element beanEl : beanElements) createBean(beanEl);
+
+            // 新增自动注入 @Autowired
+            autowireAllBeans();
+
+            for (Element beanEl : beanElements) autowireByType(beanEl);
+
             Runtime.getRuntime().addShutdownHook(new Thread(this::close));
-
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("IOC容器初始化失败", e);
+            throw new RuntimeException("IOC 初始化失败", e);
         }
     }
 
-    /**
-     * 解析配置文件中的property-placeholder标签，加载外部properties文件
-     * @param root XML根节点
-     */
-    private void loadPropertyPlaceholders(Element root) {
+    // ==========================================
+    //  新增：扫描 @Component 注解
+    // ==========================================
+    // 修复：能正确识别 context:component-scan 标签
+    private void scanComponentPackages(Element root) throws Exception {
         for (Element el : root.elements()) {
-            String name = el.getQName().getName();
-            if ("property-placeholder".equalsIgnoreCase(name) || "context:property-placeholder".equalsIgnoreCase(name)) {
-                String location = el.attributeValue("location");
-                if (location != null && !location.trim().isEmpty()) {
-                    for (String loc : location.trim().split("\\s*,\\s*")) {
-                        loadProperties(loc.trim());
+            // 同时匹配带命名空间和不带的
+            if ("component-scan".equals(el.getName()) || "context:component-scan".equals(el.getQualifiedName())) {
+                String basePackage = el.attributeValue("base-package");
+                if (basePackage != null) {
+                    System.out.println("开始扫描包：" + basePackage);
+                    scanPackage(basePackage);
+                }
+            }
+        }
+    }
+
+    private void scanPackage(String basePackage) throws Exception {
+        String path = basePackage.replace(".", "/");
+        Enumeration<URL> urls = getClass().getClassLoader().getResources(path);
+
+        while (urls.hasMoreElements()) {
+            URL url = urls.nextElement();
+            File dir = new File(url.toURI());
+            scanClassInDir(dir, basePackage);
+        }
+    }
+
+    private void scanClassInDir(File dir, String packageName) throws Exception {
+        if (!dir.exists()) return;
+        File[] files = dir.listFiles((f) -> f.isDirectory() || f.getName().endsWith(".class"));
+        if (files == null) return;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                scanClassInDir(f, packageName + "." + f.getName());
+            } else {
+                String className = packageName + "." + f.getName().replace(".class", "");
+                Class<?> clazz = Class.forName(className);
+
+                // 这里改成通用判断
+                if (isComponent(clazz)) {
+                    Object bean = clazz.getDeclaredConstructor().newInstance();
+                    String id = Character.toLowerCase(clazz.getSimpleName().charAt(0)) + clazz.getSimpleName().substring(1);
+                    singletonObjects.put(id, bean);
+                    System.out.println("已注入Bean：" + id + " -> " + clazz.getName());
+                }
+            }
+        }
+    }
+
+    // 增加这个工具方法（支持全部 Spring 注解）
+    private boolean isComponent(Class<?> clazz) {
+        for (java.lang.annotation.Annotation annotation : clazz.getAnnotations()) {
+            if (annotation.annotationType().isAnnotationPresent(org.springframework.stereotype.Component.class)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ==========================================
+    //  新增：@Autowired 自动注入
+    // ==========================================
+    private void autowireAllBeans() {
+        for (Object bean : singletonObjects.values()) {
+            Class<?> clazz = bean.getClass();
+
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.isAnnotationPresent(org.springframework.beans.factory.annotation.Autowired.class)) {
+                    Class<?> fieldType = field.getType();
+                    Object injectBean = getBean(fieldType);
+
+                    field.setAccessible(true);
+                    try {
+                        field.set(bean, injectBean);
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // 新增SpEL + ${} 解析
+    // ==========================================
+    private Object resolveSpel(String expression) {
+        try {
+            expression = expression.trim();
+            if (expression.startsWith("'") && expression.endsWith("'"))
+                return expression.substring(1, expression.length() - 1);
+
+            if (singletonObjects.containsKey(expression))
+                return singletonObjects.get(expression);
+
+            if (expression.contains(".")) {
+                String[] parts = expression.split("\\.", 2);
+                Object bean = singletonObjects.get(parts[0]);
+                if (bean == null) return null;
+                Method getter = findGetter(bean.getClass(), parts[1]);
+                if (getter != null) return getter.invoke(bean);
+            }
+
+            if (expression.matches("[0-9.]+[+*/-][0-9.]+")) {
+                return new javax.script.ScriptEngineManager()
+                        .getEngineByName("js")
+                        .eval(expression);
+            }
+        } catch (Exception ignored) {}
+        return expression;
+    }
+
+    private String resolveValue(String value) {
+        if (value == null) return null;
+
+        Matcher m = PLACEHOLDER.matcher(value);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String key = m.group(1).trim();
+            String val = properties.getProperty(key, m.group(0));
+            m.appendReplacement(sb, Matcher.quoteReplacement(val));
+        }
+        m.appendTail(sb);
+        value = sb.toString();
+
+        Matcher mSpel = SPEL.matcher(value);
+        StringBuffer sbSpel = new StringBuffer();
+        while (mSpel.find()) {
+            Object val = resolveSpel(mSpel.group(1));
+            mSpel.appendReplacement(sbSpel, Matcher.quoteReplacement(String.valueOf(val)));
+        }
+        mSpel.appendTail(sbSpel);
+        return sbSpel.toString();
+    }
+
+    // ==========================================
+    // 新增自动装配 byType
+    // ==========================================
+    private void autowireByType(Element beanEl) {
+        String id = beanEl.attributeValue("id");
+        String autowire = beanEl.attributeValue("autowire");
+        Object bean = singletonObjects.get(id);
+        if (bean == null || !"byType".equals(autowire)) return;
+
+        for (Method m : bean.getClass().getMethods()) {
+            if (m.getName().startsWith("set") && m.getParameterCount() == 1) {
+                Class<?> paramType = m.getParameterTypes()[0];
+                for (Object candidate : singletonObjects.values()) {
+                    if (paramType.isAssignableFrom(candidate.getClass())) {
+                        try {
+                            m.invoke(bean, candidate);
+                        } catch (Exception ignored) {}
                     }
                 }
             }
         }
     }
 
-    /**
-     * 加载指定路径的properties配置文件
-     * @param location 配置文件路径
-     */
-    private void loadProperties(String location) {
-        if (location.startsWith("classpath:")) {
-            location = location.substring("classpath:".length());
-        }
-
-        InputStream is = getClass().getClassLoader().getResourceAsStream(location);
-        if (is == null) {
-            System.err.println("警告：未找到配置文件 " + location);
-            return;
-        }
-        try {
-            properties.load(is);
-            System.out.println("成功加载配置：" + location);
-        } catch (Exception e) {
-            throw new RuntimeException("加载配置失败", e);
-        }
-    }
-
-    /**
-     * 解析字符串中的${key}占位符
-     * @param value 包含占位符的字符串
-     * @return 解析后的字符串
-     */
-    private String resolvePlaceholder(String value) {
-        if (value == null) {
-            return null;
-        }
-        Matcher m = PLACEHOLDER_PATTERN.matcher(value);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            String key = m.group(1).trim();
-            String propValue = properties.getProperty(key);
-            if (propValue == null) {
-                m.appendReplacement(sb, Matcher.quoteReplacement(m.group(0)));
-            } else {
-                String resolved = resolvePlaceholder(propValue);
-                m.appendReplacement(sb, Matcher.quoteReplacement(resolved));
+    // ==========================================
+    // 加载配置文件
+    // ==========================================
+    private void loadPropertyPlaceholders(Element root) {
+        for (Element el : root.elements()) {
+            if (el.getName().contains("property-placeholder")) {
+                String loc = el.attributeValue("location");
+                if (loc != null) {
+                    try (InputStream is = getClass().getClassLoader().getResourceAsStream(loc.replace("classpath:", ""))) {
+                        if (is != null) properties.load(is);
+                    } catch (Exception ignored) {}
+                }
             }
         }
-        m.appendTail(sb);
-        return sb.toString();
     }
 
-    /**
-     * 根据XML配置创建Bean实例，完成属性注入、初始化方法调用
-     * @param beanEl bean对应的XML节点
-     * @throws Exception 创建过程可能抛出的异常
-     */
+    // ==========================================
+    // 创建 XML Bean
+    // ==========================================
     private void createBean(Element beanEl) throws Exception {
         String id = beanEl.attributeValue("id");
         String className = beanEl.attributeValue("class");
-
-        // ==============================
-        // 【关键修复】class 属性为空，直接跳过，不抛异常
-        // ==============================
-        if (className == null || className.trim().isEmpty()) {
-            System.err.println("警告：Bean " + id + " 未配置class属性，已跳过");
-            return;
-        }
-
-        String initMethod = beanEl.attributeValue("init-method");
-        String destroyMethod = beanEl.attributeValue("destroy-method");
+        if (className == null || id == null) return;
 
         Class<?> clazz = Class.forName(className);
-        Object bean = clazz.getDeclaredConstructor().newInstance();
+        Object bean = clazz.newInstance();
+        singletonObjects.put(id, bean);
 
-        // 处理属性注入
         for (Element prop : beanEl.elements("property")) {
             String name = prop.attributeValue("name");
-            String rawValue = prop.attributeValue("value");
-            if (name == null || rawValue == null) {
-                continue;
-            }
+            String val = prop.attributeValue("value");
+            if (name == null || val == null) continue;
 
-            String resolvedValue = resolvePlaceholder(rawValue);
+            String resolved = resolveValue(val);
             Method setter = findSetter(clazz, name);
-            if (setter == null) {
-                continue;
-            }
-
-            Object converted = convert(resolvedValue, setter.getParameterTypes()[0]);
-            try {
-                setter.invoke(bean, converted);
-            } catch (Exception ignored) {
+            if (setter != null) {
+                try {
+                    Object v = convert(resolved, setter.getParameterTypes()[0]);
+                    setter.invoke(bean, v);
+                } catch (Exception ignored) {}
             }
         }
 
-        // 执行初始化方法
-        if (initMethod != null && !initMethod.isEmpty()) {
-            try {
-                Method m = clazz.getDeclaredMethod(initMethod);
-                m.invoke(bean);
-            } catch (NoSuchMethodException ignored) {
-            }
-        }
-
-        // 注册销毁方法
-        if (destroyMethod != null && !destroyMethod.isEmpty()) {
-            try {
-                Method m = clazz.getDeclaredMethod(destroyMethod);
-                final Object target = bean;
-                destroyHooks.add(() -> {
-                    try {
-                        m.invoke(target);
-                    } catch (Exception ignored) {
-                    }
-                });
-            } catch (NoSuchMethodException ignored) {
-            }
-        }
-
-        singletonObjects.put(id, bean);
+        invokeInit(bean, beanEl.attributeValue("init-method"));
+        registerDestroy(bean, beanEl.attributeValue("destroy-method"));
     }
 
-    /**
-     * 根据属性名称查找对应的setter方法
-     * @param clazz 目标类
-     * @param propertyName 属性名称
-     * @return 对应的setter方法，未找到返回null
-     */
-    private Method findSetter(Class<?> clazz, String propertyName) {
-        String setterName = "set" + Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
+    // ==========================================
+    // 工具方法
+    // ==========================================
+    private Object convert(String value, Class<?> type) {
+        try {
+            if (type == int.class || type == Integer.class) return Integer.parseInt(value);
+            if (type == double.class || type == Double.class) return Double.parseDouble(value);
+            if (type == boolean.class || type == Boolean.class) return Boolean.parseBoolean(value);
+        } catch (Exception ignored) {}
+        return value;
+    }
+
+    private Method findSetter(Class<?> clazz, String name) {
+        String s = "set" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
         for (Method m : clazz.getMethods()) {
-            if (m.getName().equals(setterName) && m.getParameterCount() == 1) {
-                return m;
-            }
+            if (m.getName().equals(s) && m.getParameterCount() == 1) return m;
         }
         return null;
     }
 
-    /**
-     * 将字符串转换为指定类型
-     * @param value 字符串值
-     * @param type 目标类型
-     * @return 转换后的值
-     */
-    private Object convert(String value, Class<?> type) {
+    private Method findGetter(Class<?> clazz, String name) {
+        String s = "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        for (Method m : clazz.getMethods()) {
+            if (m.getName().equals(s) && m.getParameterCount() == 0) return m;
+        }
+        return null;
+    }
+
+    private void invokeInit(Object bean, String method) {
+        if (method == null) return;
         try {
-            if (type == int.class || type == Integer.class) {
-                return Integer.parseInt(value);
-            }
-            if (type == long.class || type == Long.class) {
-                return Long.parseLong(value);
-            }
-            if (type == boolean.class || type == Boolean.class) {
-                return Boolean.parseBoolean(value);
-            }
-            if (type == double.class || type == Double.class) {
-                return Double.parseDouble(value);
-            }
-            if (type == float.class || type == Float.class) {
-                return Float.parseFloat(value);
-            }
-        } catch (Exception ignored) {
-        }
-        return value;
+            bean.getClass().getMethod(method).invoke(bean);
+        } catch (Exception ignored) {}
     }
 
-    /**
-     * 根据Bean名称获取实例
-     * @param id Bean名称
-     * @return Bean实例
-     */
-    public Object getBean(String id) {
-        return singletonObjects.get(id);
+    private void registerDestroy(Object bean, String method) {
+        if (method == null) return;
+        try {
+            Method m = bean.getClass().getMethod(method);
+            destroyHooks.add(() -> {
+                try { m.invoke(bean); } catch (Exception ignored) {}
+            });
+        } catch (Exception ignored) {}
     }
 
-    /**
-     * 根据Bean名称和类型获取实例
-     * @param id Bean名称
-     * @param clazz 目标类型
-     * @return 类型转换后的Bean实例
-     */
+    // ==========================================
+    // getBean 方法
+    // ==========================================
     public <T> T getBean(String id, Class<T> clazz) {
-        return clazz.cast(getBean(id));
+        Object bean = singletonObjects.get(id);
+        if (bean == null) throw new RuntimeException("找不到Bean：" + id);
+        return clazz.cast(bean);
     }
 
-    /**
-     * 关闭容器，执行所有Bean的销毁方法，清空容器
-     */
-    public void close() {
-        for (Runnable hook : destroyHooks) {
-            try {
-                hook.run();
-            } catch (Exception ignored) {
+    public <T> T getBean(Class<T> clazz) {
+        for (Object bean : singletonObjects.values()) {
+            if (clazz.isAssignableFrom(bean.getClass())) {
+                return clazz.cast(bean);
             }
         }
-        singletonObjects.clear();
+        throw new RuntimeException("找不到类型为 " + clazz.getName() + " 的Bean");
+    }
+
+    public void close() {
+        destroyHooks.forEach(h -> {try {h.run();}catch (Exception ignored){}});
     }
 }

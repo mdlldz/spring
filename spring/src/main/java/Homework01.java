@@ -1,4 +1,4 @@
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class Homework01 {
@@ -13,5 +13,7 @@ public class Homework01 {
         Monster monster02 = ioc.getBean("monster02", Monster.class);
         System.out.println("monster02=" + monster02);
         System.out.println("monster02.monsterId=" + monster02.getMonsterId());
+
+        ioc.close();
     }
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- SpEL 测试 Bean -->
+    <bean id="spELBean" class="web.SpELBean">
+        <!-- 字面量 -->
+        <property name="name" value="#{'mdl'}"/>
+        <!-- 引用其它 bean -->
+        <property name="monster" value="#{monster01}"/>
+        <!-- 引用 bean 属性 -->
+        <property name="monsterName" value="#{monster02.name}"/>
+        <!-- 运算 -->
+        <property name="result" value="#{89*1.2}"/>
+    </bean>
+    <bean id="monster01" class="web.Monster">
+        <property name="name" value="牛魔王"/>
+    </bean>
+    <bean id="monster02" class="web.Monster">
+        <property name="name" value="孙悟空"/>
+    </bean>
+
+</beans>

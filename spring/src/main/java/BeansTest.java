@@ -1,17 +1,47 @@
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-
+import web.OrderAction;
+import component.UserDao;
 import java.io.File;
-
+import component.UserService;
+import component.UserAction;
 class BeanTest {
+    //注解配置属性
+    @Test
+    public void setBeanByAnnotation(){
+        ApplicationContext ioc = new ApplicationContext("beans04.xml");
+        UserDao userDao = ioc.getBean(UserDao.class);
+        UserService userService = ioc.getBean(UserService.class);
+        UserAction userAction = ioc.getBean(UserAction.class);
+        System.out.println("userDao=" + userDao);
+        System.out.println("userService=" + userService);
+        System.out.println("userAction=" + userAction);
+
+    }
+    //Spring EI
+    @Test
+    public void testSpringEI(){
+        ApplicationContext ioc = new ApplicationContext("beans02.xml");
+        SpELBean spELBean = ioc.getBean("spELBean", SpELBean.class);
+        System.out.println("spELBean=" + spELBean);
+    }
+    //自动装配
+    @Test
+    public void testBeanByAutowire(){
+        ApplicationContext ioc = new ApplicationContext("beans02.xml");
+        OrderAction orderAction = ioc.getBean("orderAction", OrderAction.class);
+        System.out.println(orderAction.getOrderService());
+        System.out.println(orderAction.getOrderService().getOrderDao());
+    }
     //属性文件给bean属性赋值
     @Test
     public void testProperties(){
         ApplicationContext ioc = new ApplicationContext("beans.xml");
         Monster monster1000 = ioc.getBean("monster1000", Monster.class);
         System.out.println("monster1000=" + monster1000);
-    }    //测试后置处理器
+    }
+    //测试后置处理器
     @Test
     public void testBeanPostProcessor(){
         ApplicationContext ioc = new ApplicationContext("beans02.xml");
@@ -28,7 +58,6 @@ class BeanTest {
     //2. 因为ClassPathXmlApplicationContext 实现了 ConfigurableApplicationContext
     //3. ClassPathXmlApplicationContext 是有close
     //4. 将ioc 转成ClassPathXmlApplicationContext,再调用close
-        ioc.close();
     }
     //测试Scope
     @Test

@@ -1,10 +1,13 @@
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+
 public class Homework_Car {
+
     @Test
-    public void getCar(){
-        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("car_beans.xml");
+    public void getCar() {
+        // 补全类名，删除错误的命名参数
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("beans.xml");
         Car car = context.getBean("car", Car.class);
         System.out.println(car);
     }

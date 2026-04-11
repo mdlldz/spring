@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context.xsd">
+    <!--        配置文件要扫描的包
+1.component-scan 要对指定包下的类进行扫描，并创建对象到容器
+2.base-package 指定要扫描的包
+3.含义是当spring容器创建/初始化时，就会扫描component包下的所有的 有注解的，将其实例化，生成对象放入容器
+-->
+    <!-- 纯注解扫描 -->
+    <context:component-scan base-package="component"/>
+</beans>
+

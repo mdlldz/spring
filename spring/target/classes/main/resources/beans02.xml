@@ -4,8 +4,23 @@
        xsi:schemaLocation="
        http://www.springframework.org/schema/beans
        http://www.springframework.org/schema/beans/spring-beans.xsd">
-
-
+    <!--配置0rderDa0对象-->
+    <bean class="web.OrderDao" id="orderDao"/>
+    <!--
+1. autowire="byType" 表示 在创建 orderService时通过类型的方式 给对象属性 自动完成赋值/引用
+2. 比t如OrderService 对象有 private OrderDao orderDao
+3.就会在容器中去找有没有 0rderDao类型对象
+4.如果有，就会自动的装配，如果是按照byType方式来装配，这个容器中，不能有两个I的0rderDao类型对象
+5.如果对象没有属性，autowire就没必要写
+6.如果设置的是autowire="byName",表示通过名字完成自动装配
+7. autowire="byName" class="web.OrderService"
+(1)先看 OrderService 属性 private OrderDao orderDao
+(2) 再根据这个属性的setXxx()方法的xxx 来找对象id
+(3)public void setOrderDao()就会找id=orderDao对象来进行自动装配
+(4)如果没有就装配失败
+-->
+<bean autowire="byType" class="web.OrderService" id="orderService"/>
+    <bean  autowire="byType" class="web.OrderAction" id="orderAction"/>
     <bean class="House" id="house" destroy-method="destroy" 
           init-method="init">
         <property name="name" value="大豪宅"/>
