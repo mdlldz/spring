@@ -22,6 +22,18 @@
             <version>5.3.8</version>
         </dependency>
 
+        <!-- ===================== Spring AOP 核心依赖 ===================== -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+            <version>5.3.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>1.9.7</version>
+        </dependency>
+
         <!-- 解析 XML -->
         <dependency>
             <groupId>org.dom4j</groupId>
@@ -39,7 +51,7 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.9.2</version>
-            <scope>compile</scope>  <!-- 这里必须改成 compile，否则 main 目录找不到 -->
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
