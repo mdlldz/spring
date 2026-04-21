@@ -1,4 +1,4 @@
-package proxy2;
+package proxy.proxy2;
 
 public class Car implements Vehicle{
     @Override

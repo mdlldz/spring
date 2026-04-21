@@ -1,4 +1,4 @@
-package proxy1;
+package proxy.proxy1;
 
 public class AopTest {
     public static void main(String[] args) {

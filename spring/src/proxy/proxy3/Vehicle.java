@@ -1,4 +1,4 @@
-package proxy3;
+package proxy.proxy3;
 
 
 public interface Vehicle {

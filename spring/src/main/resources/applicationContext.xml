@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- 1. 注册业务类 -->
+    <bean id="car" class="proxy3.Car"/>
+
+    <!-- 2. 注册切面类 -->
+    <bean id="vehicleAop" class="proxy3.VehicleAop"/>
+
+    <!-- 3. AOP 配置（核心！） -->
+    <aop:config>
+        <!-- 切点 -->
+        <aop:pointcut id="vehiclePointcut"
+                      expression="execution(* proxy3.Vehicle.*(..))"/>
+
+        <!-- 切面 -->
+        <aop:aspect ref="vehicleAop">
+            <!-- 前置 -->
+            <aop:before method="beforeMethod" pointcut-ref="vehiclePointcut"/>
+
+            <!-- 返回 -->
+            <aop:after-returning method="afterReturningMethod"
+                                 pointcut-ref="vehiclePointcut"
+                                 returning="result"/>
+
+            <!-- 异常 -->
+            <aop:after-throwing method="afterThrowingMethod"
+                                pointcut-ref="vehiclePointcut"
+                                throwing="ex"/>
+
+            <!-- 最终 -->
+            <aop:after method="afterMethod" pointcut-ref="vehiclePointcut"/>
+
+            <!-- 环绕 -->
+            <aop:around method="aroundMethod" pointcut-ref="vehiclePointcut"/>
+        </aop:aspect>
+    </aop:config>
+
+</beans>

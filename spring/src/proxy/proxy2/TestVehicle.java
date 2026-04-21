@@ -1,13 +1,13 @@
-package proxy2;
+package proxy.proxy2;
 
 import org.junit.jupiter.api.Test;
 
 public class TestVehicle {
     @Test
     public void run(){
-        proxy2.Vehicle car = new Car();
+        Vehicle car = new Car();
         car.run();
-        proxy2.Vehicle ship = new Ship();
+        Vehicle ship = new Ship();
         ship.run();
     }
     @Test
