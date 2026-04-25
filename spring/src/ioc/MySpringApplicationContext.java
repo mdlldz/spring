@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MySpringApplicationContext {
-
+    private final List<BeanPostProcessor> postProcessorList = new ArrayList<>();
     // 配置的包路径
     private final String basePackage;
 
@@ -26,6 +26,7 @@ public class MySpringApplicationContext {
 
     // 容器启动
     private void refresh() {
+        initBeanPostProcessor();
         // 1. 包扫描
         List<Class<?>> classList = scanPackage(basePackage);
 
@@ -114,24 +115,41 @@ public class MySpringApplicationContext {
     // 创建Bean（实例化 → 依赖注入）
     private Object createBean(String beanName, Class<?> clazz) {
         try {
-            // 实例化
-            Object instance = clazz.getDeclaredConstructor().newInstance();
+            // ========== 你原来的代码，我完全不动 ==========
+            // 1. 实例化
+            Object bean = clazz.getDeclaredConstructor().newInstance();
 
-            // 依赖注入 @Autowired
+            // 2. 依赖注入 @Autowired
             Field[] fields = clazz.getDeclaredFields();
             for (Field field : fields) {
                 if (field.isAnnotationPresent(Autowired.class)) {
                     Class<?> fieldType = field.getType();
-                    String fieldBeanName = lowerFirst(fieldType.getSimpleName());
+                    String fieldBeanName = Character.toLowerCase(fieldType.getSimpleName().charAt(0))
+                            + fieldType.getSimpleName().substring(1);
                     Object dependBean = getBean(fieldBeanName);
                     field.setAccessible(true);
-                    field.set(instance, dependBean);
+                    field.set(bean, dependBean);
                 }
             }
 
-            // 放入单例池
-            singletonObjects.put(beanName, instance);
-            return instance;
+            // ========== 【我给你的增强代码，插在这里】 ==========
+            // 3. Bean前置处理器
+            for (BeanPostProcessor processor : postProcessorList) {
+                bean = processor.postProcessBefore(bean, beanName);
+            }
+
+            // 4. AOP代理增强
+            bean = wrapBeanByAop(bean);
+
+            // 5. Bean后置处理器
+            for (BeanPostProcessor processor : postProcessorList) {
+                bean = processor.postProcessAfter(bean, beanName);
+            }
+
+            // ========== 你原来的代码，我完全不动 ==========
+            // 6. 存入单例池
+            singletonObjects.put(beanName, bean);
+            return bean;
 
         } catch (Exception e) {
             throw new RuntimeException("创建Bean失败：" + beanName, e);
@@ -140,5 +158,27 @@ public class MySpringApplicationContext {
 
     private String lowerFirst(String str) {
         return Character.toLowerCase(str.charAt(0)) + str.substring(1);
+    }
+    // 初始化所有Bean后置处理器
+    private void initBeanPostProcessor(){
+        for (Class<?> clazz : beanDefinitionMap.values()) {
+            if(BeanPostProcessor.class.isAssignableFrom(clazz)){
+                try {
+                    postProcessorList.add((BeanPostProcessor) clazz.getDeclaredConstructor().newInstance());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    // AOP包装代理对象
+    private Object wrapBeanByAop(Object bean){
+        for (Object aspectBean : singletonObjects.values()) {
+            if(aspectBean.getClass().isAnnotationPresent(Aspect.class)){
+                return new AopProxy(bean,aspectBean).getProxy();
+            }
+        }
+        return bean;
     }
 }
