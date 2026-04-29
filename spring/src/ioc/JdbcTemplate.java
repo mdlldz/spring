@@ -1,11 +1,11 @@
-package ioc;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 @Component
 public class JdbcTemplate {
+    @Autowired
+    private DataSourceTransactionManager transactionManager;
+
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
     private static final String URL = "jdbc:mysql://localhost:3306/test?useSSL=false";
     private static final String USER = "root";
@@ -19,10 +19,15 @@ public class JdbcTemplate {
         }
     }
 
+    // 修改这里，优先获取事务连接
     private Connection getConn() throws SQLException{
+        if (transactionManager != null) {
+            return transactionManager.getCurrentConnection();
+        }
         return DriverManager.getConnection(URL,USER,PWD);
     }
 
+    // 你原有的 update/query 方法 完全不动
     public int update(String sql,Object...params){
         try (Connection conn = getConn();
              PreparedStatement pstm = conn.prepareStatement(sql)){
