@@ -68,7 +68,7 @@ public class UserController {
      */
     @GetMapping("/add")
     public String toAdd(Model model) {
-        model.addAttribute("user", new User());
+        model.addAttribute("user", new User(1, "redirectUser", "123456", 21, "redirect@qq.com"));
         return "user/add";
     }
 

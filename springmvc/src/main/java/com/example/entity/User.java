@@ -23,7 +23,7 @@ public class User {
     private Date createTime; // 创建时间
 
     // 无参构造器（SpringMVC数据绑定必须）
-    public User() {}
+    public User(int i, String redirectUser, String number, int i1, String mail) {}
 
     // 全参构造器
     public User(Integer id, String username, String password, String email, Integer age, Date createTime) {

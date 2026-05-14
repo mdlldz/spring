@@ -1,78 +1,82 @@
 package com.example.config;
 
 import com.example.interceptor.LoginInterceptor;
+import com.example.resolver.CustomViewResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.servlet.config.annotation.*;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * SpringMVC核心配置类
- * 覆盖知识点：SpringMVC配置、视图解析器、文件上传、拦截器、静态资源映射
+ * 扩展：注册自定义视图解析器
  */
 @Configuration
-@ComponentScan(basePackages = "com.example")
+@ComponentScan("com.example")
 @EnableWebMvc
 public class WebConfig implements WebMvcConfigurer {
 
     /**
-     * 视图解析器配置
-     * 功能：拼接视图路径，将逻辑视图名转换为物理视图路径
+     * 内置JSP视图解析器
      */
     @Bean
-    public InternalResourceViewResolver viewResolver() {
+    public InternalResourceViewResolver jspViewResolver() {
         InternalResourceViewResolver resolver = new InternalResourceViewResolver();
         resolver.setPrefix("/WEB-INF/views/");
         resolver.setSuffix(".jsp");
-        resolver.setViewClass(org.springframework.web.servlet.view.JstlView.class);
+        resolver.setOrder(2); // 优先级低于自定义视图解析器
         return resolver;
     }
 
     /**
-     * 文件上传解析器配置
-     * 功能：解析multipart/form-data类型的文件上传请求
+     * 自定义视图解析器
+     */
+    @Bean
+    public CustomViewResolver customViewResolver() {
+        return new CustomViewResolver();
+    }
+
+    /**
+     * 配置视图解析器链
+     */
+    @Override
+    public void configureViewResolvers(ViewResolverRegistry registry) {
+        // 注册自定义视图解析器
+        registry.viewResolver(customViewResolver());
+        // 注册JSP视图解析器
+        registry.jsp("/WEB-INF/views/", ".jsp");
+    }
+
+    /**
+     * 文件上传解析器
      */
     @Bean
     public CommonsMultipartResolver multipartResolver() {
         CommonsMultipartResolver resolver = new CommonsMultipartResolver();
-        resolver.setMaxUploadSize(10 * 1024 * 1024); // 最大上传文件10MB
         resolver.setDefaultEncoding("UTF-8");
+        resolver.setMaxUploadSize(10 * 1024 * 1024);
         return resolver;
     }
 
     /**
-     * 拦截器注册
-     * 功能：注册登录拦截器，对需要登录的请求进行权限校验
+     * 注册拦截器
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginInterceptor())
-                .addPathPatterns("/**") // 拦截所有请求
-                .excludePathPatterns(
-                        "/user/login",
-                        "/user/register",
-                        "/static/**",
-                        "/error"
-                ); // 放行登录、注册、静态资源和错误页面
+                .addPathPatterns("/**")
+                .excludePathPatterns("/user/login", "/user/doLogin", "/static/**", "/api/**");
     }
 
     /**
-     * 静态资源映射
-     * 功能：放行css、js、图片等静态资源请求
+     * 静态资源放行
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/static/**")
-                .addResourceLocations("/static/");
-    }
-
-    /**
-     * 配置默认Servlet处理静态资源
-     */
-    @Override
-    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
-        configurer.enable();
+        registry.addResourceHandler("/static/**").addResourceLocations("/static/");
     }
 }

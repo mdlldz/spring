@@ -15,7 +15,7 @@ public class UserDao {
 
     // 模拟数据
     static {
-        User u1 = new User();
+        User u1 = new User(1, "redirectUser", "123456", 21, "redirect@qq.com");
         u1.setId(1);
         u1.setUsername("admin");
         u1.setPassword("123456");
